@@ -3,7 +3,6 @@ dotenv.config();
 
 import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
-// import contracts from './node_modules/synthetix/publish/deployed/kovan-ovm/deployment.json';
 
 const providerOE = new ethers.providers.WebSocketProvider(process.env.API_KEY_OE_MAINNET || '');
 const providerETH = new ethers.providers.WebSocketProvider(process.env.APY_KEY_MAINNET || '');
@@ -53,34 +52,13 @@ function getMarketSymbols() {
         }
     }
 
-    // console.log(marketSymbols)
     return marketSymbols;
-}
-
-async function getENSName(addr: string) {
-    let ensName;
-    try {
-        ensName = await providerETH.lookupAddress(addr);
-        if (ensName == null) {
-            ensName = addr;
-        }
-    } catch (err) {
-        // ens lookup error
-        ensName = addr;
-    }
-
-    return ensName;
 }
 
 type Liquidations = {
     marketSymbol: string;
-    // id: string;
-    // account: string;
-    // liquidator: string;
     size: string;
     price: string;
-    //     fee: string;
-    // txHash: string;
 };
 
 function getFlavorText(liquidation: Liquidations) {
@@ -89,8 +67,6 @@ function getFlavorText(liquidation: Liquidations) {
     let value =
         parseInt(ethers.utils.formatEther(ethers.BigNumber.from(liquidation.size))) *
         parseInt(ethers.utils.formatEther(ethers.BigNumber.from(liquidation.price)));
-
-    // console.log(value);
 
     if (value > 1000000000) {
         flavorText = 'sREKT';
@@ -110,9 +86,6 @@ function getFlavorText(liquidation: Liquidations) {
 }
 
 function getTweet(liquidation: Liquidations) {
-    // 🛑💔🚫❌‼️
-
-    // let ensName = await getENSName(liquidation.account);
     let flavorText = getFlavorText(liquidation);
     let tweet =
         '🚫 ' +
@@ -124,11 +97,6 @@ function getTweet(liquidation: Liquidations) {
         ' at ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.price)).substring(0, 7) +
         '\n';
-    // '\nhttps://optimistic.etherscan.io/tx/' +
-    // liquidation.txHash + '\n';
-    // RIP ' +
-    // ensName + '\n';
-
     return tweet;
 }
 
@@ -149,27 +117,17 @@ async function main() {
 
     // let testTweet = getTweet(testLiq);
     // console.log(testTweet);
-	// twitter.v2.tweet(testTweet);
+    // twitter.v2.tweet(testTweet);
 
     for (const market of markets) {
-        // console.log(await market.baseAsset());
-
         market.on(
             'PositionLiquidated',
             async (id, account, liquidator, size, price, fee, event) => {
-                // console.log(event)
-                // console.log(event.transactionHash)
                 const liquidation = {
                     marketSymbol: marketSymbols.get(market.address),
-                    // id: id.toString(),
-                    // account,
-                    // liquidator,
                     size: size.toString().replace('-', ''),
                     price: price.toString(),
-                    // fee: fee.toString(),
-                    // txHash: event.transactionHash
                 };
-                // console.log(liquidation);
 
                 let tweet = getTweet(liquidation);
                 console.log(tweet);
