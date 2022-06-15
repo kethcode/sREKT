@@ -5,7 +5,6 @@ import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
 
 const providerOE = new ethers.providers.WebSocketProvider(process.env.API_KEY_OE_MAINNET || '');
-const providerETH = new ethers.providers.WebSocketProvider(process.env.APY_KEY_MAINNET || '');
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY ?? '', providerOE);
 
 import { TwitterApi } from 'twitter-api-v2';
@@ -106,13 +105,8 @@ async function main() {
 
     // const testLiq = {
     //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-    //     // id: '5',
-    //     // account: '0xaa7bab6c5dE5c20f385A1BD481bac521b4B70e68',
-    //     // liquidator: '',
     //     size: '-21019416428722031000'.replace('-', ''),
     //     price: '1239480485360000000000',
-    //     // fee: '1',
-    //     // txHash: '0xaee24639ca3462a4a8942b1e4786a3ccc473fe8f79505e373ebbfc10a9c4012f'
     // };
 
     // let testTweet = getTweet(testLiq);
