@@ -15,12 +15,10 @@ const signer = new ethers.Wallet(process.env.PRIVATE_KEY ?? '', providerOE);
 
 import { TwitterApi } from 'twitter-api-v2';
 
-const appKey = process.env.TWITTER_API_KEY ? process.env.TWITTER_API_KEY : '';
-const appSecret = process.env.TWITTER_API_SECRET ? process.env.TWITTER_API_SECRET : '';
-const accessToken = process.env.TWITTER_ACCESS_TOKEN ? process.env.TWITTER_ACCESS_TOKEN : '';
-const accessSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET
-    ? process.env.TWITTER_ACCESS_TOKEN_SECRET
-    : '';
+const appKey = process.env.TWITTER_API_KEY ?? '';
+const appSecret = process.env.TWITTER_API_SECRET ?? '';
+const accessToken = process.env.TWITTER_ACCESS_TOKEN ?? '';
+const accessSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET ?? '';
 
 const twitter = new TwitterApi({
     appKey: appKey,
