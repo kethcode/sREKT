@@ -99,7 +99,7 @@ function getFlavorText(liquidation: Liquidations) {
             break;
         }
     }
-    let rangeTopIndex = i * sizeOfMemeRange + (sizeOfMemeRange - 1);
+    // let rangeTopIndex = i * sizeOfMemeRange + (sizeOfMemeRange - 1);
     let rangeBottomIndex = i * sizeOfMemeRange;
     let memeIndex = Math.floor(Math.random() * sizeOfMemeRange) + rangeBottomIndex;
 
