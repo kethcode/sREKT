@@ -1,1 +1,1 @@
-https://twitter.com/kwenbot
+https://twitter.com/Kwenta_bot
