@@ -91,17 +91,17 @@ function getFlavorText(liquidation: Liquidations) {
     let memes = loadMemes();
 
     let sizeOfMemeRange = Math.round(memes.length / ranges.length);
-	let value = makeFloat(liquidation.size) * makeFloat(liquidation.price);
+    let value = makeFloat(liquidation.size) * makeFloat(liquidation.price);
 
-	let i = ranges.length - 1
-	for(; i > 0; i--) {
-		if(value > ranges[i]) {
-			break;
-		}
-	}
-	let rangeTopIndex = (i * sizeOfMemeRange) + (sizeOfMemeRange - 1);
-	let rangeBottomIndex = i * sizeOfMemeRange;
-	let memeIndex = Math.floor(Math.random() * sizeOfMemeRange) + rangeBottomIndex;
+    let i = ranges.length - 1;
+    for (; i > 0; i--) {
+        if (value > ranges[i]) {
+            break;
+        }
+    }
+    let rangeTopIndex = i * sizeOfMemeRange + (sizeOfMemeRange - 1);
+    let rangeBottomIndex = i * sizeOfMemeRange;
+    let memeIndex = Math.floor(Math.random() * sizeOfMemeRange) + rangeBottomIndex;
 
     return memes[memeIndex];
 }

@@ -9,7 +9,7 @@
         "dev": "pm2 start ts-node --no-daemon --no-autorestart --watch -- sREKT.ts"
     },
     "keywords": [],
-    "author": "kethcode",
+    "author": "kethic",
     "license": "MIT",
     "dependencies": {
         "dotenv": "16.0.0",
