@@ -1,3 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+
+const path_ranges = path.resolve(__dirname, `./data/ranges.txt`);
+const path_memes = path.resolve(__dirname, `./data/memes.txt`);
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -60,42 +66,64 @@ type Liquidations = {
     price: string;
 };
 
-function getFlavorText(liquidation: Liquidations) {
-    let flavorText: string;
+function makeFloat(input: string) {
+    return parseFloat(ethers.utils.formatEther(ethers.BigNumber.from(input)));
+}
 
-    let value =
-        parseInt(ethers.utils.formatEther(ethers.BigNumber.from(liquidation.size))) *
-        parseInt(ethers.utils.formatEther(ethers.BigNumber.from(liquidation.price)));
-
-    if (value > 1000000000) {
-        flavorText = 'sREKT';
-    } else if (value > 100000000) {
-        flavorText = 'sREKT';
-    } else if (value > 10000000) {
-        flavorText = 'sREKT';
-    } else if (value > 1000000) {
-        flavorText = 'sREKT';
-    } else if (value > 100000) {
-        flavorText = 'sREKT';
-    } else {
-        flavorText = 'sREKT';
+function loadRanges() {
+    const rangeFile = fs.readFileSync(path_ranges, { flag: 'r+' });
+    const rangeFileSplit = rangeFile.toString().replace(/\r\n/g, '\n').split('\n');
+    const ranges: number[] = [];
+    for (let i = 0; i < rangeFileSplit.length; i++) {
+        ranges.push(parseInt(rangeFileSplit[i]));
     }
 
-    return flavorText;
+    return ranges;
+}
+
+function loadMemes() {
+    const memeFile = fs.readFileSync(path_memes, { flag: 'r+' });
+    return memeFile.toString().replace(/\r\n/g, '\n').split('\n');
+}
+
+function getFlavorText(liquidation: Liquidations) {
+    let ranges = loadRanges();
+    let memes = loadMemes();
+
+    let sizeOfMemeRange = Math.round(memes.length / ranges.length);
+	let value = makeFloat(liquidation.size) * makeFloat(liquidation.price);
+
+	let i = ranges.length - 1
+	for(; i > 0; i--) {
+		if(value > ranges[i]) {
+			break;
+		}
+	}
+	let rangeTopIndex = (i * sizeOfMemeRange) + (sizeOfMemeRange - 1);
+	let rangeBottomIndex = i * sizeOfMemeRange;
+	let memeIndex = Math.floor(Math.random() * sizeOfMemeRange) + rangeBottomIndex;
+
+    return memes[memeIndex];
 }
 
 function getTweet(liquidation: Liquidations) {
+    let dollarUSLocale = Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        useGrouping: false,
+    });
+
     let flavorText = getFlavorText(liquidation);
     let tweet =
-        '🚫 ' +
-        flavorText +
-        ' 🚫\nLiquidated ' +
+        '🚫 Liquidated ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.size)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
         ' at ' +
-        ethers.utils.formatEther(ethers.BigNumber.from(liquidation.price)).substring(0, 7) +
-        '\n';
+        dollarUSLocale.format(makeFloat(liquidation.price)) +
+        ' 🚫\n\n' +
+        flavorText;
+
     return tweet;
 }
 
@@ -105,7 +133,7 @@ async function main() {
 
     // const testLiq = {
     //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-    //     size: '-21019416428722031000'.replace('-', ''),
+    //     size: '-210194164287220310'.replace('-', ''),
     //     price: '1239480485360000000000',
     // };
 
