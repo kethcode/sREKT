@@ -50,7 +50,7 @@ function getMarketSymbols() {
         ) {
             marketSymbols.set(
                 targets[i][1]['address'],
-                targets[i][1]['name'].replace('FuturesMarket', 's')
+                targets[i][1]['name'].replace('FuturesMarket', '')
             );
         }
     }
@@ -114,15 +114,15 @@ function getTweet(liquidation: Liquidations) {
 
     let flavorText = getFlavorText(liquidation);
     let tweet =
-        '🚫 Liquidated ' +
+        '💀 Liquidated ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.size)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
 		' ' + 
 		liquidation.type +
-        ' at ' +
+        ' @ ' +
         dollarUSLocale.format(makeFloat(liquidation.price)) +
-        ' 🚫\n\n' +
+        '\n\n' +
         flavorText;
 
     return tweet;
@@ -132,15 +132,15 @@ async function main() {
     const markets: Contract[] = await getMarkets();
     const marketSymbols = getMarketSymbols();
 
-    // const testLiq = {
-    //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-    //     size: '210194164287220310'.replace('-', ''),
-	// 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
-    //     price: '1239480485360000000000',
-    // };
+    const testLiq = {
+        marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
+        size: '210194164287220310'.replace('-', ''),
+		type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
+        price: '1239480485360000000000',
+    };
 
-    // let testTweet = getTweet(testLiq);
-    // console.log(testTweet);
+    let testTweet = getTweet(testLiq);
+    console.log(testTweet);
     // twitter.v2.tweet(testTweet);
 
     for (const market of markets) {
