@@ -60,7 +60,7 @@ function getMarketSymbols() {
 
 type Liquidations = {
     marketSymbol: string;
-    size: string;
+    posSize: string;
 	type: string;
     price: string;
 };
@@ -90,7 +90,7 @@ function getFlavorText(liquidation: Liquidations) {
     let memes = loadMemes();
 
     let sizeOfMemeRange = Math.round(memes.length / ranges.length);
-    let value = makeFloat(liquidation.size) * makeFloat(liquidation.price);
+    let value = makeFloat(liquidation.posSize) * makeFloat(liquidation.price);
 
     let i = ranges.length - 1;
     for (; i > 0; i--) {
@@ -115,7 +115,7 @@ function getTweet(liquidation: Liquidations) {
     let flavorText = getFlavorText(liquidation);
     let tweet =
         '💀 Liquidated ' +
-        ethers.utils.formatEther(ethers.BigNumber.from(liquidation.size)).substring(0, 7) +
+        ethers.utils.formatEther(ethers.BigNumber.from(liquidation.posSize)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
 		' ' + 
@@ -134,7 +134,7 @@ async function main() {
 
     // const testLiq = {
     //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-    //     size: '210194164287220310'.replace('-', ''),
+    //     posSize: '210194164287220310'.replace('-', ''),
 	// 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
     //     price: '1239480485360000000000',
     // };
@@ -149,7 +149,7 @@ async function main() {
             async (id, account, liquidator, size, price, fee, event) => {
                 const liquidation = {
                     marketSymbol: marketSymbols.get(market.address),
-                    size: size.toString().replace('-', ''),
+                    posSize: size.toString().replace('-', ''),
 					type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
                     price: price.toString(),
                 };
