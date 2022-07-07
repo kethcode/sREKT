@@ -149,16 +149,17 @@ async function main() {
     const markets: Contract[] = await getMarkets();
     const marketSymbols = getMarketSymbols();
 
-    const testLiq = {
-        marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-        posSize: '2101941642872203100000'.replace('-', ''),
-		type: makeFloat('2101941642872203100000') > 0 ? 'LONG' : 'SHORT',
-        price: '1239480485360000000000',
-    };
+    // const testLiq = {
+    //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
+    //     posSize: '210194164287220310'.replace('-', ''),
+	// 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
+    //     price: '1239480485360000000000',
+    // };
 
-    let testTweet = getTweet(testLiq);
-    console.log(testTweet);
-    twitter.v2.tweet(testTweet);
+	
+    // let testTweet = getTweet(testLiq);
+    // console.log(testTweet);
+    // twitter.v2.tweet(testTweet);
 
     for (const market of markets) {
         market.on(
