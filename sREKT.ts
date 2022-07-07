@@ -85,6 +85,20 @@ function loadMemes() {
     return memeFile.toString().replace(/\r\n/g, '\n').split('\n');
 }
 
+function getSkulls(liquidation: Liquidations) {
+    let ranges = loadRanges();
+    let value = makeFloat(liquidation.posSize) * makeFloat(liquidation.price);
+
+    let i = ranges.length - 1;
+    for (; i > 0; i--) {
+        if (value > ranges[i]) {
+            break;
+        }
+    }
+	let skulls = '💀'.repeat(i + 1);
+    return skulls;
+}
+
 function getFlavorText(liquidation: Liquidations) {
     let ranges = loadRanges();
     let memes = loadMemes();
@@ -112,9 +126,12 @@ function getTweet(liquidation: Liquidations) {
         useGrouping: false,
     });
 
+	let skulls = getSkulls(liquidation);
     let flavorText = getFlavorText(liquidation);
     let tweet =
-        '💀 Liquidated ' +
+		skulls + 
+        //'💀 Liquidated ' +
+		' Liquidated ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.posSize)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
@@ -132,16 +149,16 @@ async function main() {
     const markets: Contract[] = await getMarkets();
     const marketSymbols = getMarketSymbols();
 
-    // const testLiq = {
-    //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
-    //     posSize: '210194164287220310'.replace('-', ''),
-	// 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
-    //     price: '1239480485360000000000',
-    // };
+    const testLiq = {
+        marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
+        posSize: '2101941642872203100000'.replace('-', ''),
+		type: makeFloat('2101941642872203100000') > 0 ? 'LONG' : 'SHORT',
+        price: '1239480485360000000000',
+    };
 
-    // let testTweet = getTweet(testLiq);
-    // console.log(testTweet);
-    // twitter.v2.tweet(testTweet);
+    let testTweet = getTweet(testLiq);
+    console.log(testTweet);
+    twitter.v2.tweet(testTweet);
 
     for (const market of markets) {
         market.on(
