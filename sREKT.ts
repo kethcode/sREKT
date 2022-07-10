@@ -178,7 +178,7 @@ async function main() {
             }
         );
 
-        console.log(`Listening for ${marketSymbols.get(market.address)} liquidations`);
+        console.log(`Listening for ${marketSymbols.get(market.address)} liquidations on contract ${market.address}`);
     }
 }
 
