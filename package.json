@@ -1,8 +1,8 @@
 {
     "name": "srekt",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "",
-    "main": "sREKT.js",
+    "main": "sREKT.ts",
     "scripts": {
         "start": "pm2 start ts-node --watch -- sREKT.ts --time",
         "stop": "pm2 delete ts-node sREKT.ts ",
@@ -12,11 +12,11 @@
     "author": "kethic",
     "license": "MIT",
     "dependencies": {
-        "dotenv": "16.0.0",
-        "ethers": "5.6.3",
-        "pm2": "5.2.0",
-        "synthetix": "^2.76.1",
-        "ts-node": "10.7.0",
-        "twitter-api-v2": "1.12.2"
+        "dotenv": "16.0.3",
+        "ethers": "5.7.2",
+        "pm2": "5.2.2",
+        "synthetix": "2.83.1",
+        "ts-node": "10.9.1",
+        "twitter-api-v2": "1.14.1"
     }
 }

@@ -10,6 +10,9 @@ dotenv.config();
 import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
 
+// keccak256("PositionLiquidated(uint256,address,address,int256,uint256,uint256)")
+const liquidationEventHash = '0x62e7eb6698aabc6740afc94f06bbdfb947fc109fd24d4adb26014d44053ac2c3';
+
 const providerOE = new ethers.providers.WebSocketProvider(process.env.API_KEY_OE_MAINNET || '');
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY ?? '', providerOE);
 
@@ -32,36 +35,51 @@ async function getMarkets() {
     const managerAddr = contracts.targets.FuturesMarketManager.address;
     const manager = new ethers.Contract(managerAddr, managerABI, providerOE);
 
-    const markets = await manager.allMarkets();
-    const marketABI = contracts.sources.FuturesMarket.abi;
+    //const markets = await manager.allMarkets();
+    // overloaded function names need signature in ethers
+    const markets = await manager['allMarkets(bool)'](true);
+    const marketABI = contracts.sources.PerpsV2Market.abi;
     return markets.map((address: string) => new ethers.Contract(address, marketABI, signer));
 }
 
-function getMarketSymbols() {
+async function getMarketSymbols() {
     const marketSymbols = new Map();
+    const perpsV2MarketABI = contracts.sources.PerpsV2Market.abi;
 
     let targets = Object.entries(contracts.targets);
     for (let i = 0; i < targets.length; i++) {
         if (
-            targets[i][1]['source'].includes('FuturesMarket') &&
-            targets[i][1]['source'] != 'FuturesMarketManager' &&
-            targets[i][1]['source'] != 'FuturesMarketData' &&
-            targets[i][1]['source'] != 'FuturesMarketSettings'
+            targets[i][1]['source'].includes('PerpsV2Market') &&
+            targets[i][1]['source'] != 'PerpsV2MarketData' &&
+            targets[i][1]['source'] != 'PerpsV2MarketSettings' &&
+            targets[i][1]['source'] != 'PerpsV2MarketState' &&
+            targets[i][1]['source'] != 'PerpsV2MarketViews' &&
+            targets[i][1]['source'] != 'PerpsV2MarketDelayedOrders' &&
+            targets[i][1]['source'] != 'PerpsV2MarketDelayedOrdersOffchain'
         ) {
-            marketSymbols.set(
+            const perpsV2Market = new ethers.Contract(
                 targets[i][1]['address'],
-                targets[i][1]['name'].replace('FuturesMarket', '')
+                perpsV2MarketABI,
+                signer
+            );
+            const parentAddress = await perpsV2Market.proxy();
+
+            marketSymbols.set(
+                parentAddress,
+                '$'.concat(
+                    '',
+                    targets[i][1]['name'].replace('PerpsV2Market', '').replace('PERP', '')
+                )
             );
         }
     }
-
     return marketSymbols;
 }
 
 type Liquidations = {
     marketSymbol: string;
     posSize: string;
-	type: string;
+    type: string;
     price: string;
 };
 
@@ -76,7 +94,6 @@ function loadRanges() {
     for (let i = 0; i < rangeFileSplit.length; i++) {
         ranges.push(parseInt(rangeFileSplit[i]));
     }
-
     return ranges;
 }
 
@@ -95,7 +112,7 @@ function getSkulls(liquidation: Liquidations) {
             break;
         }
     }
-	let skulls = '💀'.repeat(i + 1);
+    let skulls = '💀'.repeat(i + 1);
     return skulls;
 }
 
@@ -126,59 +143,61 @@ function getTweet(liquidation: Liquidations) {
         useGrouping: false,
     });
 
-	let skulls = getSkulls(liquidation);
+    let skulls = getSkulls(liquidation);
     let flavorText = getFlavorText(liquidation);
     let tweet =
-		skulls + 
+        skulls +
         //'💀 Liquidated ' +
-		' Liquidated ' +
+        ' Liquidated ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.posSize)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
 		' ' + 
-		liquidation.type +
+        liquidation.type +
         ' @ ' +
         dollarUSLocale.format(makeFloat(liquidation.price)) +
         '\n\n' +
         flavorText;
-
     return tweet;
 }
 
 async function main() {
     const markets: Contract[] = await getMarkets();
-    const marketSymbols = getMarketSymbols();
+    const marketSymbols = await getMarketSymbols();
 
     // const testLiq = {
-    //     marketSymbol: marketSymbols.get('0xf86048DFf23cF130107dfB4e6386f574231a5C65'),
+    //     marketSymbol: marketSymbols.get('0x2B3bb4c683BFc5239B029131EEf3B1d214478d93'),
     //     posSize: '210194164287220310'.replace('-', ''),
-	// 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
+    // 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
     //     price: '1239480485360000000000',
     // };
 
-	
     // let testTweet = getTweet(testLiq);
     // console.log(testTweet);
     // twitter.v2.tweet(testTweet);
 
     for (const market of markets) {
-        market.on(
-            'PositionLiquidated',
-            async (id, account, liquidator, size, price, fee, event) => {
-                const liquidation = {
-                    marketSymbol: marketSymbols.get(market.address),
-                    posSize: size.toString().replace('-', ''),
-					type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
-                    price: price.toString(),
-                };
+        const filter = {
+            address: market.address,
+            topics: [liquidationEventHash],
+        };
+        market.on(filter, async (id, account, liquidator, size, price, fee, event) => {
+            const liquidation = {
+                marketSymbol: marketSymbols.get(market.address),
+                posSize: size.toString().replace('-', ''),
+                type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
+                price: price.toString(),
+            };
+            let tweet = getTweet(liquidation);
+            console.log(tweet);
+            twitter.v2.tweet(tweet);
+        });
 
-                let tweet = getTweet(liquidation);
-                console.log(tweet);
-                twitter.v2.tweet(tweet);
-            }
+        console.log(
+            `Listening for ${marketSymbols.get(market.address)} liquidations on contract ${
+                market.address
+            }`
         );
-
-        console.log(`Listening for ${marketSymbols.get(market.address)} liquidations on contract ${market.address}`);
     }
 }
 
