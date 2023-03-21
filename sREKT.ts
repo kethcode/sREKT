@@ -152,7 +152,7 @@ function getTweet(liquidation: Liquidations) {
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.posSize)).substring(0, 7) +
         ' ' +
         liquidation.marketSymbol +
-		' ' + 
+        ' ' +
         liquidation.type +
         ' @ ' +
         dollarUSLocale.format(makeFloat(liquidation.price)) +
@@ -161,6 +161,32 @@ function getTweet(liquidation: Liquidations) {
     return tweet;
 }
 
+const tweetBuffer: string[] = [];
+var cron = require('node-cron');
+// once a minute
+cron.schedule('* * * * *', async () => {
+    try {
+        await publishFromTweetBuffer();
+    } catch (e) {
+        console.error('cron.schedule: ' + e);
+    }
+});
+
+const publishFromTweetBuffer = async () => {
+    while (tweetBuffer.length > 0) {
+        try {
+            let tweet = tweetBuffer.shift();
+            if (tweet) {
+                console.log('posted tweet:', tweet);
+                await twitter.v2.tweet(tweet);
+            }
+        } catch (e) {
+            console.error('publishFromTweetBuffer: ' + e);
+            console.log(new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + ', ' + e);
+        }
+    }
+};
+
 async function main() {
     const markets: Contract[] = await getMarkets();
     const marketSymbols = await getMarketSymbols();
@@ -168,19 +194,23 @@ async function main() {
     // const testLiq = {
     //     marketSymbol: marketSymbols.get('0x2B3bb4c683BFc5239B029131EEf3B1d214478d93'),
     //     posSize: '210194164287220310'.replace('-', ''),
-    // 	type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
+    //     type: makeFloat('210194164287220310') > 0 ? 'LONG' : 'SHORT',
     //     price: '1239480485360000000000',
     // };
 
     // let testTweet = getTweet(testLiq);
-    // console.log(testTweet);
-    // twitter.v2.tweet(testTweet);
+    // console.log('added tweet x3:', testTweet);
+    // tweetBuffer.push('test1:' + testTweet);
+    // tweetBuffer.push('test2:' + testTweet);
+    // tweetBuffer.push('test3:' + testTweet);
+    // // twitter.v2.tweet(tweet);
 
     for (const market of markets) {
         const filter = {
             address: market.address,
             topics: [liquidationEventHash],
         };
+
         market.on(filter, async (id, account, liquidator, size, price, fee, event) => {
             const liquidation = {
                 marketSymbol: marketSymbols.get(market.address),
@@ -189,8 +219,9 @@ async function main() {
                 price: price.toString(),
             };
             let tweet = getTweet(liquidation);
-            console.log(tweet);
-            twitter.v2.tweet(tweet);
+            tweetBuffer.push(tweet);
+            console.log('added tweet:', tweet);
+            // twitter.v2.tweet(tweet);
         });
 
         console.log(
