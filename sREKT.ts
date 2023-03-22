@@ -11,7 +11,9 @@ import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
 
 // keccak256("PositionLiquidated(uint256,address,address,int256,uint256,uint256)")
+// keccak256("PositionModified(uint256,address,uint256,int256,int256,uint256,uint256,uint256)")
 const liquidationEventHash = '0x62e7eb6698aabc6740afc94f06bbdfb947fc109fd24d4adb26014d44053ac2c3';
+const positionModifiedHash = '0x930fd93131df035ac630ef616ad4212af6370377bf327e905c2724cd01d95097';
 
 const providerOE = new ethers.providers.WebSocketProvider(process.env.API_KEY_OE_MAINNET || '');
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY ?? '', providerOE);
@@ -164,25 +166,29 @@ function getTweet(liquidation: Liquidations) {
 const tweetBuffer: string[] = [];
 var cron = require('node-cron');
 // once a minute
-cron.schedule('* * * * *', async () => {
+cron.schedule('* * * * *', () => {
     try {
-        await publishFromTweetBuffer();
+        publishFromTweetBuffer();
     } catch (e) {
-        console.error('cron.schedule: ' + e);
+        console.log('cron.schedule: ' + e);
     }
 });
 
-const publishFromTweetBuffer = async () => {
+const publishFromTweetBuffer = () => {
     while (tweetBuffer.length > 0) {
         try {
             let tweet = tweetBuffer.shift();
             if (tweet) {
                 console.log('posted tweet:', tweet);
-                await twitter.v2.tweet(tweet);
+                twitter.v2.tweet(tweet);
             }
         } catch (e) {
-            console.error('publishFromTweetBuffer: ' + e);
-            console.log(new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + ', ' + e);
+            //console.error('publishFromTweetBuffer: ' + e);
+            console.log(
+                new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') +
+                    ' publishFromTweetBuffer:' +
+                    e
+            );
         }
     }
 };
@@ -206,12 +212,17 @@ async function main() {
     // // twitter.v2.tweet(tweet);
 
     for (const market of markets) {
-        const filter = {
+        const filterLiquidation = {
             address: market.address,
             topics: [liquidationEventHash],
         };
 
-        market.on(filter, async (id, account, liquidator, size, price, fee, event) => {
+        const filterPosition = {
+            address: market.address,
+            topics: [positionModifiedHash],
+        };
+
+        market.on(filterLiquidation, async (id, account, liquidator, size, price, fee, event) => {
             const liquidation = {
                 marketSymbol: marketSymbols.get(market.address),
                 posSize: size.toString().replace('-', ''),
@@ -223,6 +234,28 @@ async function main() {
             console.log('added tweet:', tweet);
             // twitter.v2.tweet(tweet);
         });
+
+        // market.on(filterPosition, async (id, account, liquidator, size, price, fee, event) => {
+        //     // console.log('position modified:', id, account, liquidator, size, price, fee, event);
+        //     const position = {
+        //         marketSymbol: marketSymbols.get(market.address),
+        //         posSize: size.toString().replace('-', ''),
+        //         type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
+        //         price: price.toString(),
+        //     };
+
+        //     console.log('position modified:', position);
+        //     // const liquidation = {
+        //     //     marketSymbol: marketSymbols.get(market.address),
+        //     //     posSize: size.toString().replace('-', ''),
+        //     //     type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
+        //     //     price: price.toString(),
+        //     // };
+        //     // let tweet = getTweet(liquidation);
+        //     // tweetBuffer.push(tweet);
+        //     // console.log('added tweet:', tweet);
+        //     // // twitter.v2.tweet(tweet);
+        // });
 
         console.log(
             `Listening for ${marketSymbols.get(market.address)} liquidations on contract ${
