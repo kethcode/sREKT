@@ -163,35 +163,35 @@ function getTweet(liquidation: Liquidations) {
     return tweet;
 }
 
-const tweetBuffer: string[] = [];
-var cron = require('node-cron');
-// once a minute
-cron.schedule('* * * * *', () => {
-    try {
-        publishFromTweetBuffer();
-    } catch (e) {
-        console.log('cron.schedule: ' + e);
-    }
-});
+// const tweetBuffer: string[] = [];
+// var cron = require('node-cron');
+// // once a minute
+// cron.schedule('* * * * *', () => {
+//     try {
+//         publishFromTweetBuffer();
+//     } catch (e) {
+//         console.log('cron.schedule: ' + e);
+//     }
+// });
 
-const publishFromTweetBuffer = () => {
-    while (tweetBuffer.length > 0) {
-        try {
-            let tweet = tweetBuffer.shift();
-            if (tweet) {
-                console.log('posted tweet:', tweet);
-                twitter.v2.tweet(tweet);
-            }
-        } catch (e) {
-            //console.error('publishFromTweetBuffer: ' + e);
-            console.log(
-                new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') +
-                    ' publishFromTweetBuffer:' +
-                    e
-            );
-        }
-    }
-};
+// const publishFromTweetBuffer = () => {
+//     while (tweetBuffer.length > 0) {
+//         try {
+//             let tweet = tweetBuffer.shift();
+//             if (tweet) {
+//                 console.log('posted tweet:', tweet);
+//                 twitter.v2.tweet(tweet);
+//             }
+//         } catch (e) {
+//             //console.error('publishFromTweetBuffer: ' + e);
+//             console.log(
+//                 new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') +
+//                     ' publishFromTweetBuffer:' +
+//                     e
+//             );
+//         }
+//     }
+// };
 
 async function main() {
     const markets: Contract[] = await getMarkets();
@@ -230,9 +230,9 @@ async function main() {
                 price: price.toString(),
             };
             let tweet = getTweet(liquidation);
-            tweetBuffer.push(tweet);
+            // tweetBuffer.push(tweet);
             console.log('added tweet:', tweet);
-            // twitter.v2.tweet(tweet);
+            twitter.v2.tweet(tweet);
         });
 
         // market.on(filterPosition, async (id, account, liquidator, size, price, fee, event) => {
