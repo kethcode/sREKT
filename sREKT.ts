@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
 const path_ranges = path.resolve(__dirname, `./data/ranges.txt`);
 const path_memes = path.resolve(__dirname, `./data/memes.txt`);
 
 import dotenv from 'dotenv';
 dotenv.config();
+
+// import { client } from './client'
+// // import { abi } from './abi'
 
 import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
@@ -148,6 +153,7 @@ function getTweet(liquidation: Liquidations) {
     let skulls = getSkulls(liquidation);
     let flavorText = getFlavorText(liquidation);
     let tweet =
+        //'debug: ' +
         skulls +
         //'💀 Liquidated ' +
         ' Liquidated ' +
@@ -163,35 +169,44 @@ function getTweet(liquidation: Liquidations) {
     return tweet;
 }
 
-// const tweetBuffer: string[] = [];
-// var cron = require('node-cron');
-// // once a minute
-// cron.schedule('* * * * *', () => {
-//     try {
-//         publishFromTweetBuffer();
-//     } catch (e) {
-//         console.log('cron.schedule: ' + e);
-//     }
-// });
+enum mutex {
+    Locked = 1,
+    Unlocked,
+}
 
-// const publishFromTweetBuffer = () => {
-//     while (tweetBuffer.length > 0) {
-//         try {
-//             let tweet = tweetBuffer.shift();
-//             if (tweet) {
-//                 console.log('posted tweet:', tweet);
-//                 twitter.v2.tweet(tweet);
-//             }
-//         } catch (e) {
-//             //console.error('publishFromTweetBuffer: ' + e);
-//             console.log(
-//                 new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') +
-//                     ' publishFromTweetBuffer:' +
-//                     e
-//             );
-//         }
-//     }
-// };
+const tweetBuffer: string[] = [];
+let tweetBufferMutex: mutex = mutex.Unlocked;
+
+const addToTweetBuffer = async (tweet: string) => {
+    while (tweetBufferMutex == mutex.Locked) {
+        await delay(1000);
+    }
+    tweetBufferMutex = mutex.Locked;
+    tweetBuffer.push(tweet);
+    console.log('added tweet:', tweet);
+    tweetBufferMutex = mutex.Unlocked;
+};
+
+const publishFromTweetBuffer = async () => {
+    tweetBufferMutex = mutex.Locked;
+    while (tweetBuffer.length > 0) {
+        try {
+            let tweet = tweetBuffer.shift();
+            if (tweet) {
+                console.log('posted tweet:', tweet);
+                twitter.v2.tweet(tweet);
+            }
+        } catch (e) {
+            console.log(
+                new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') +
+                    ' publishFromTweetBuffer:' +
+                    e
+            );
+        }
+        await delay(1000);
+    }
+    tweetBufferMutex = mutex.Unlocked;
+};
 
 async function main() {
     const markets: Contract[] = await getMarkets();
@@ -205,11 +220,10 @@ async function main() {
     // };
 
     // let testTweet = getTweet(testLiq);
-    // console.log('added tweet x3:', testTweet);
-    // tweetBuffer.push('test1:' + testTweet);
-    // tweetBuffer.push('test2:' + testTweet);
-    // tweetBuffer.push('test3:' + testTweet);
-    // // twitter.v2.tweet(tweet);
+    // addToTweetBuffer('test1:' + testTweet);
+    // addToTweetBuffer('test2:' + testTweet);
+    // addToTweetBuffer('test3:' + testTweet);
+    // publishFromTweetBuffer();
 
     for (const market of markets) {
         const filterLiquidation = {
@@ -229,10 +243,8 @@ async function main() {
                 type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
                 price: price.toString(),
             };
-            let tweet = getTweet(liquidation);
-            // tweetBuffer.push(tweet);
-            console.log('added tweet:', tweet);
-            twitter.v2.tweet(tweet);
+            addToTweetBuffer(getTweet(liquidation));
+            publishFromTweetBuffer();
         });
 
         // market.on(filterPosition, async (id, account, liquidator, size, price, fee, event) => {
