@@ -1,6 +1,6 @@
 {
     "name": "srekt",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "description": "",
     "main": "sREKT.ts",
     "scripts": {
@@ -11,7 +11,7 @@
     "dependencies": {
         "dotenv": "16.0.3",
         "ethers": "5.7.2",
-        "synthetix": "2.84.4",
+        "synthetix": "2.85.0",
         "ts-node": "10.9.1",
         "twitter-api-v2": "1.14.2",
         "typescript": "5.0.2"
