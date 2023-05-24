@@ -9,16 +9,21 @@ const path_memes = path.resolve(__dirname, `./data/memes.txt`);
 import dotenv from 'dotenv';
 dotenv.config();
 
-// import { client } from './client'
-// // import { abi } from './abi'
-
 import { ethers, Contract } from 'ethers';
 import contracts from './node_modules/synthetix/publish/deployed/mainnet-ovm/deployment.json';
 
-// keccak256("PositionLiquidated(uint256,address,address,int256,uint256,uint256)")
-// keccak256("PositionModified(uint256,address,uint256,int256,int256,uint256,uint256,uint256)")
-const liquidationEventHash = '0x62e7eb6698aabc6740afc94f06bbdfb947fc109fd24d4adb26014d44053ac2c3';
-const positionModifiedHash = '0x930fd93131df035ac630ef616ad4212af6370377bf327e905c2724cd01d95097';
+// https://github.com/Synthetixio/synthetix/blob/bf9d09d9d4d6d4222aaf4501592d602edf9e302d/contracts/PerpsV2MarketLiquidate.sol#L215
+// keccak256("PositionLiquidated(uint256,address,address,int256,uint256,uint256,uint256,uint256)")
+const liquidationEventHash = '0x8e83cfbf9c95216dce50909e376c0dcc3e23129a3aa1edd5013fa8b41648f883';
+
+// https://github.com/Synthetixio/synthetix/blob/bf9d09d9d4d6d4222aaf4501592d602edf9e302d/contracts/PerpsV2MarketProxyable.sol#LL292C20-L292C106
+// keccak256("PositionModified(uint256,address,uint256,int256,int256,uint256,uint256,uint256,int256)")
+const positionModifiedHash = '0xc0d933baa356386a245ade48f9a9c59db4612af2b5b9c17de5b451c628760f43';
+
+const eventABI = [
+    'event PositionLiquidated(uint256 id, address account, address liquidator, int256 size, uint256 price, uint256 flaggerFee, uint256 liquidatorFee, uint256 stakersFee)',
+    'event PositionModified(uint256 indexed id, address indexed account, uint256 margin, int256 size, int256 tradeSize, uint256 lastPrice, uint256 fundingIndex, uint256 fee, int256 skew)',
+];
 
 const providerOE = new ethers.providers.WebSocketProvider(process.env.API_KEY_OE_MAINNET || '');
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY ?? '', providerOE);
@@ -42,10 +47,11 @@ async function getMarkets() {
     const managerAddr = contracts.targets.FuturesMarketManager.address;
     const manager = new ethers.Contract(managerAddr, managerABI, providerOE);
 
-    //const markets = await manager.allMarkets();
     // overloaded function names need signature in ethers
     const markets = await manager['allMarkets(bool)'](true);
-    const marketABI = contracts.sources.PerpsV2Market.abi;
+    // const marketABI = contracts.sources.PerpsV2Market.abi;
+    // const marketABI = contracts.sources.PerpsV2MarketLiquidate.abi;
+    const marketABI = eventABI;
     return markets.map((address: string) => new ethers.Contract(address, marketABI, signer));
 }
 
@@ -62,8 +68,12 @@ async function getMarketSymbols() {
             targets[i][1]['source'] != 'PerpsV2MarketState' &&
             targets[i][1]['source'] != 'PerpsV2MarketViews' &&
             targets[i][1]['source'] != 'PerpsV2MarketDelayedOrders' &&
-            targets[i][1]['source'] != 'PerpsV2MarketDelayedOrdersOffchain'
+            targets[i][1]['source'] != 'PerpsV2MarketDelayedOrdersOffchain' &&
+            targets[i][1]['source'] != 'PerpsV2MarketDelayedIntent' &&
+            targets[i][1]['source'] != 'PerpsV2MarketDelayedExecution' &&
+            targets[i][1]['source'] != 'PerpsV2MarketLiquidate'
         ) {
+            // console.log(targets[i][1]['source']);
             const perpsV2Market = new ethers.Contract(
                 targets[i][1]['address'],
                 perpsV2MarketABI,
@@ -153,9 +163,7 @@ function getTweet(liquidation: Liquidations) {
     let skulls = getSkulls(liquidation);
     let flavorText = getFlavorText(liquidation);
     let tweet =
-        //'debug: ' +
         skulls +
-        //'💀 Liquidated ' +
         ' Liquidated ' +
         ethers.utils.formatEther(ethers.BigNumber.from(liquidation.posSize)).substring(0, 7) +
         ' ' +
@@ -209,6 +217,7 @@ const publishFromTweetBuffer = async () => {
 };
 
 async function main() {
+    console.log('Refreshing Markets');
     const markets: Contract[] = await getMarkets();
     const marketSymbols = await getMarketSymbols();
 
@@ -225,49 +234,58 @@ async function main() {
     // addToTweetBuffer('test3:' + testTweet);
     // publishFromTweetBuffer();
 
+    // const eventABI = [
+    //     'event PositionLiquidated(uint256 id, address account, address liquidator, int256 size, uint256 price, uint256 flaggerFee, uint256 liquidatorFee, uint256 stakersFee)',
+    //     'event PositionModified(uint256 indexed id, address indexed account, uint256 margin, int256 size, int256 tradeSize, uint256 lastPrice, uint256 fundingIndex, uint256 fee, int256 skew)',
+    // ];
+
     for (const market of markets) {
         const filterLiquidation = {
             address: market.address,
-            topics: [liquidationEventHash],
+            //topics: [liquidationEventHash],
+            topics: [
+                ethers.utils.id(
+                    'PositionLiquidated(uint256,address,address,int256,uint256,uint256,uint256,uint256)'
+                ),
+            ],
         };
 
-        const filterPosition = {
-            address: market.address,
-            topics: [positionModifiedHash],
-        };
-
-        market.on(filterLiquidation, async (id, account, liquidator, size, price, fee, event) => {
-            const liquidation = {
-                marketSymbol: marketSymbols.get(market.address),
-                posSize: size.toString().replace('-', ''),
-                type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
-                price: price.toString(),
-            };
-            addToTweetBuffer(getTweet(liquidation));
-            publishFromTweetBuffer();
-        });
-
-        // market.on(filterPosition, async (id, account, liquidator, size, price, fee, event) => {
-        //     // console.log('position modified:', id, account, liquidator, size, price, fee, event);
-        //     const position = {
-        //         marketSymbol: marketSymbols.get(market.address),
-        //         posSize: size.toString().replace('-', ''),
-        //         type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
-        //         price: price.toString(),
-        //     };
-
-        //     console.log('position modified:', position);
-        //     // const liquidation = {
-        //     //     marketSymbol: marketSymbols.get(market.address),
-        //     //     posSize: size.toString().replace('-', ''),
-        //     //     type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
-        //     //     price: price.toString(),
-        //     // };
-        //     // let tweet = getTweet(liquidation);
-        //     // tweetBuffer.push(tweet);
-        //     // console.log('added tweet:', tweet);
-        //     // // twitter.v2.tweet(tweet);
-        // });
+        market.on(
+            filterLiquidation,
+            //async (id, account, liquidator, size, price, flagFee, liqFee, margin, event) => {
+            async (
+                id,
+                account,
+                liquidator,
+                size,
+                price,
+                flaggerFee,
+                liquidatorFee,
+                stakersFee,
+                event
+            ) => {
+                // console.log(
+                //     'liquidation:',
+                //     id,
+                //     account,
+                //     liquidator,
+                //     size,
+                //     price,
+                //     flaggerFee,
+                //     liquidatorFee,
+                //     stakersFee,
+                //     event
+                // );
+                const liquidation = {
+                    marketSymbol: marketSymbols.get(market.address),
+                    posSize: size.toString().replace('-', ''),
+                    type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
+                    price: price.toString(),
+                };
+                addToTweetBuffer(getTweet(liquidation));
+                publishFromTweetBuffer();
+            }
+        );
 
         console.log(
             `Listening for ${marketSymbols.get(market.address)} liquidations on contract ${
