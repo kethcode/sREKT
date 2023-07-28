@@ -10,7 +10,7 @@
     "dependencies": {
         "dotenv": "16.0.3",
         "ethers": "5.7.2",
-        "synthetix": "2.89.1",
+        "synthetix": "2.91.1",
         "twitter-api-v2": "1.14.2",
         "@types/node": "^18.15.12",
         "ts-node": "^10.9.1",
