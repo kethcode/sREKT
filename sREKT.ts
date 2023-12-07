@@ -264,7 +264,7 @@ async function main() {
                 stakersFee,
                 event
             ) => {
-                // console.log(
+// console.log(
                 //     'liquidation:',
                 //     id,
                 //     account,
@@ -282,8 +282,11 @@ async function main() {
                     type: makeFloat(size) > 0 ? 'LONG' : 'SHORT',
                     price: price.toString(),
                 };
-                addToTweetBuffer(getTweet(liquidation));
-                publishFromTweetBuffer();
+                if(liquidation.posSize >= 100000)
+                {
+                    addToTweetBuffer(getTweet(liquidation));
+                    publishFromTweetBuffer();
+                }
             }
         );
 
